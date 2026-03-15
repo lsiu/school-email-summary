@@ -49,47 +49,60 @@ Core packages for Gmail API:
 
 ```
 /d/src/family-automation/
-├── read_gmail_messages.py    # Gmail API script
-├── requirements.txt          # Python dependencies
-├── QWEN-SANDBOX-ENV.md      # This file
-├── .venv/                    # Windows virtual environment (incompatible)
-├── .cache/                   # Cache directory for API results and prompts
-└── .env                      # Environment variables (API_KEY)
+├── main.py                      # Main entry point (run this)
+├── config/
+│   ├── __init__.py
+│   └── settings.py              # Constants, prompts, configuration
+├── services/
+│   ├── __init__.py
+│   ├── gmail_auth.py            # Gmail OAuth authentication
+│   ├── gmail_client.py          # Gmail API operations
+│   └── qwen_summarizer.py       # Qwen CLI integration
+├── utils/
+│   ├── __init__.py
+│   ├── cache.py                 # Cache management
+│   └── message_parser.py        # Email decoding and formatting
+├── requirements.txt             # Python dependencies
+├── credentials.json             # OAuth credentials (from Google Cloud)
+├── token.json                   # OAuth token (auto-generated)
+├── QWEN-SANDBOX-ENV.md          # This file
+├── .venv/                       # Windows virtual environment
+├── .cache/                      # Auto-generated cache directory
+└── .env                         # Environment variables (API_KEY)
 ```
 
 ## Running the Gmail Script
 
-### First-time Setup (on your local machine with a browser)
+### Command
 
 ```bash
 # Windows (with .venv activated)
 .venv/Scripts/Activate.ps1
-python read_gmail_messages.py
-# This will open a browser for OAuth authorization
-# After successful auth, token.json will be created
+python main.py [options]
+
+# Qwen Sandbox (system-wide installation)
+python3 main.py [options]
 ```
 
-### In this Sandbox (headless)
+### Options
 
-```bash
-# System-wide installation (already configured)
-cd /d/src/family-automation
-python3 read_gmail_messages.py
-
-# Copy token.json from your local machine to this sandbox if needed
+```
+--force-refresh    Force refresh from Gmail API, bypassing cache
+--days DAYS        Number of days to search back (default: 30)
+--max-results N    Max results per domain (default: 50)
 ```
 
-### Command Line Options
+### Examples
 
 ```bash
 # Normal run (uses cache if < 12 hours old)
-python3 read_gmail_messages.py
+python main.py
 
 # Force refresh from Gmail API
-python3 read_gmail_messages.py --force-refresh
+python main.py --force-refresh
 
-# Custom search range
-python3 read_gmail_messages.py --days 7 --max-results 20
+# Search last 7 days, max 20 results per domain
+python main.py --days 7 --max-results 20
 ```
 
 ## Prerequisites for Gmail API
