@@ -13,7 +13,6 @@ Use --force-refresh to bypass cache.
 import argparse
 import sys
 from datetime import datetime, timedelta
-from dotenv import load_dotenv
 
 from config import (
     load_config,
@@ -27,9 +26,6 @@ from services.gmail_client import read_messages
 from services.qwen_summarizer import summarize_with_qwen
 from utils.cache import get_cache_key, load_from_cache, save_to_cache
 from utils.message_parser import format_messages_for_summary
-
-# Load environment variables from .env file
-load_dotenv()
 
 
 def parse_arguments():
@@ -93,7 +89,6 @@ def main():
 
     try:
         # Load configuration from config.yaml
-        print("Loading configuration...")
         load_config()
         
         # Show configuration if requested

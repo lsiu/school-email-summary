@@ -20,10 +20,10 @@ from config.settings import SCOPES
 def get_gmail_service():
     """
     Authenticate and build the Gmail API service.
-    
+
     Returns:
         Authorized Gmail API service object
-        
+
     Raises:
         FileNotFoundError: If credentials.json is missing
         ValueError: If credentials.json contains placeholder values
@@ -32,11 +32,6 @@ def get_gmail_service():
     creds = None
     token_path = "token.json"
     credentials_path = "credentials.json"
-
-    # Load API key from environment (optional, kept for compatibility)
-    api_key = os.getenv("API_KEY")
-    if not api_key:
-        print("Warning: API_KEY not found in .env file (optional for OAuth flow)")
 
     # Check for existing token
     if os.path.exists(token_path):
