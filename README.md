@@ -31,11 +31,23 @@ cp config.yaml.example config.yaml
 
 ### 3. Set Up Gmail API
 
+**Option A: Using Encrypted Credentials (Recommended)**
+
+1. Contact the administrator to be added as a test user
+2. Request for the `credentials.enc` (Ask author for it)
+3. Place it in the project folder (same folder as `main.py`)
+4. Run the script: `python main.py`
+5. Enter the shared password when prompted (Ask author for it)
+6. You will only need to enter the password once
+
+**Option B: Using Your Own Google Cloud Project**
+
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a new project (or select existing)
 3. Enable the **Gmail API**
 4. Create **OAuth 2.0 Client ID** credentials
 5. Download the JSON file as `credentials.json`
+6. Place it in the project folder
 
 [Detailed setup guide →](setup-guide.md)
 

@@ -10,7 +10,7 @@ from typing import List, Dict, Any
 
 from googleapiclient.errors import HttpError
 
-from config.settings import SENDER_DOMAINS
+from config import get_sender_domains
 from utils.message_parser import decode_message
 
 
@@ -21,19 +21,20 @@ def read_messages(
 ) -> List[Dict[str, Any]]:
     """
     Read messages from specified sender domains within the last N days.
-    
+
     Args:
         service: Authorized Gmail API service object
         days: Number of days to search back (default: 30)
         max_results_per_domain: Maximum results per domain (default: 50)
-        
+
     Returns:
         List of decoded message dictionaries
     """
     messages = []
+    sender_domains = get_sender_domains()
     date_filter = f"after:{(datetime.now() - timedelta(days=days)).strftime('%Y/%m/%d')}"
 
-    for domain in SENDER_DOMAINS:
+    for domain in sender_domains:
         query = f"from:{domain} {date_filter}"
         print(f"  Searching: {query}")
         try:

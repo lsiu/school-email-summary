@@ -131,28 +131,67 @@ Save `config.yaml` after editing.
 
 ## Step 5: Set Up Gmail API Access
 
-This allows the tool to read your Gmail messages.
+You have two options for setting up Gmail API access.
 
-### 5.1 Go to Google Cloud Console
+### Option A: Using Encrypted Credentials (Recommended for IMS Parents)
+
+This is the easiest method if you're part of the IMS parent group.
+
+**5A.1 Get Encrypted Credentials**
+
+1. Contact the administrator to be added as a test user
+2. You will receive `credentials.enc` (encrypted credentials file)
+3. You will receive the password separately (via WhatsApp/email)
+
+**5A.2 Place the File**
+
+1. Place `credentials.enc` in the project folder (same folder as `main.py`)
+2. Do NOT rename the file
+
+**5A.3 First Run**
+
+```bash
+python main.py
+```
+
+When prompted, enter the shared password. You will only need to enter this once - it is saved for future runs.
+
+**Your folder should now have:**
+```
+ims-gmail-automation/
+├── main.py
+├── config.yaml          ← You created this
+├── credentials.enc      ← Encrypted credentials
+├── requirements.txt
+└── ...
+```
+
+---
+
+### Option B: Using Your Own Google Cloud Project
+
+Use this method if you prefer to set up your own Google Cloud project.
+
+**5B.1 Go to Google Cloud Console**
 
 1. Visit [Google Cloud Console](https://console.cloud.google.com/)
 2. Sign in with your Gmail account
 
-### 5.2 Create a New Project
+**5B.2 Create a New Project**
 
 1. Click the project dropdown at the top
 2. Click "NEW PROJECT"
 3. Name it something like "IMS Email Automation"
 4. Click "CREATE"
 
-### 5.3 Enable Gmail API
+**5B.3 Enable Gmail API**
 
 1. In the sidebar, go to **APIs & Services** → **Library**
 2. Search for "Gmail API"
 3. Click on "Gmail API"
 4. Click "ENABLE"
 
-### 5.4 Create OAuth Credentials
+**5B.4 Create OAuth Credentials**
 
 1. Go to **APIs & Services** → **Credentials**
 2. Click "+ CREATE CREDENTIALS" → "OAuth client ID"
@@ -173,7 +212,7 @@ This allows the tool to read your Gmail messages.
 2. Name: "IMS Automation"
 3. Click "CREATE"
 
-### 5.5 Download Credentials
+**5B.5 Download Credentials**
 
 1. Click the download icon (⬇️) next to your new credentials
 2. Save the file as `credentials.json`
@@ -193,13 +232,19 @@ ims-gmail-automation/
 
 ## Step 6: First Run (Authorize Access)
 
-### Run the Script
+### If Using Encrypted Credentials (Option A)
+
+**Run the Script:**
 
 ```bash
 python main.py
 ```
 
-### Authorize Google Access
+**Enter Password:**
+
+When prompted, enter the shared password. You will only need to enter this once.
+
+**Authorize Google Access:**
 
 1. A browser window will open
 2. Sign in to your Google account
@@ -210,7 +255,34 @@ python main.py
 5. The browser will show "Authentication successful"
 6. Return to the terminal - the script will continue
 
-### What Happens Next
+**What Happens Next:**
+
+- The script creates a `token.json` file (saved authorization)
+- Future runs won't need browser authorization or password
+- Emails are fetched and summarized
+
+---
+
+### If Using Your Own Google Cloud Project (Option B)
+
+**Run the Script:**
+
+```bash
+python main.py
+```
+
+**Authorize Google Access:**
+
+1. A browser window will open
+2. Sign in to your Google account
+3. You'll see a warning: "This app isn't verified"
+   - This is normal for personal projects
+   - Click "Advanced" → "Go to (unsafe)"
+4. Click "Allow" to grant Gmail access
+5. The browser will show "Authentication successful"
+6. Return to the terminal - the script will continue
+
+**What Happens Next:**
 
 - The script creates a `token.json` file (saved authorization)
 - Future runs won't need browser authorization

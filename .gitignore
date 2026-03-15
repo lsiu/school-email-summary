@@ -6,8 +6,18 @@
 
 # OAuth credentials and tokens
 credentials.json
+credentials.enc
 token.json
 .env
+
+# Encrypted credentials password file (NEVER commit)
+.key
+
+# =============================================================================
+# ENCRYPTED CREDENTIALS (Safe to distribute, optional for git)
+# =============================================================================
+# credentials.enc - Uncomment if you want to track in git
+# credentials.enc
 
 # =============================================================================
 # USER CONFIGURATION (Each parent has their own)
