@@ -31,6 +31,7 @@ CHILDREN = {
 GRADE_DIVISIONS = {
     "Lower Elementary": (1, 3),  # Grades 1-3
     "Upper Elementary": (4, 6),  # Grades 4-6
+    "Middle School": (7, 8),     # Grades 7-8
 }
 
 
@@ -66,9 +67,9 @@ def calculate_grade(birth_year: int, current_date=None) -> int:
     
     # Grade 1 starts at age 6
     grade = age_at_school_start - 5
-    
-    # Clamp to reasonable elementary range
-    return max(1, min(grade, 6))
+
+    # Clamp to reasonable range (grades 1-8)
+    return max(1, min(grade, 8))
 
 
 def get_division(grade: int) -> str:
@@ -76,15 +77,17 @@ def get_division(grade: int) -> str:
     Get the elementary division for a given grade.
 
     Args:
-        grade: Grade level (1-6)
+        grade: Grade level (1-8+)
 
     Returns:
-        Division name: "Lower Elementary" or "Upper Elementary"
+        Division name: "Lower Elementary", "Upper Elementary", or "Middle School"
     """
     if 1 <= grade <= 3:
         return "Lower Elementary"
     elif 4 <= grade <= 6:
         return "Upper Elementary"
+    elif 7 <= grade <= 8:
+        return "Middle School"
     else:
         return "Unknown Division"
 
@@ -94,15 +97,17 @@ def get_division_range(division: str) -> str:
     Get the grade range string for a division.
 
     Args:
-        division: Division name ("Lower Elementary" or "Upper Elementary")
+        division: Division name ("Lower Elementary", "Upper Elementary", or "Middle School")
 
     Returns:
-        Grade range string (e.g., "Grades 1-3" or "Grades 4-6")
+        Grade range string (e.g., "Grades 1-3", "Grades 4-6", or "Grades 7-8")
     """
     if division == "Lower Elementary":
         return "Grades 1-3"
     elif division == "Upper Elementary":
         return "Grades 4-6"
+    elif division == "Middle School":
+        return "Grades 7-8"
     else:
         return "Unknown Grades"
 
@@ -140,7 +145,7 @@ There are TWO children:
 Use the following to help classify which emails are for which child:
 - Class names: Indus = Leona, Bauhinia = Leonidas
 - Grade levels: Grade {leona_grade} = Leona, Grade {leonidas_grade} = Leonidas
-- Elementary divisions: {leona_division} ({leona_division_range}) = Leona, {leonidas_division} ({leonidas_division_range}) = Leonidas
+- School divisions: {leona_division} ({leona_division_range}) = Leona, {leonidas_division} ({leonidas_division_range}) = Leonidas
 - Age-based events: Use birth years ({leona_birth_year}/{leonidas_birth_year}) to determine which child an age-specific event applies to
 
 TODAY'S DATE: {today_date}
@@ -203,7 +208,10 @@ Any information that applies to both children
 - If there are NO action items in the next 7 days for a child, clearly state "No action items in the next 7 days" for that child
 - Use class names (Indus = Leona, Bauhinia = Leonidas) to classify emails even when child names are not mentioned
 - Use grade levels to classify emails
-- Use elementary divisions ({leona_division} = Leona, {leonidas_division} = Leonidas) to classify emails
+- Use school divisions ({leona_division} = Leona, {leonidas_division} = Leonidas) to classify emails
+  - Lower Elementary (Grades 1-3)
+  - Upper Elementary (Grades 4-6)
+  - Middle School (Grades 7-8)
 - Use birth years ({leona_birth_year} = Leona, {leonidas_birth_year} = Leonidas) to determine age-appropriate events
 
 ---
