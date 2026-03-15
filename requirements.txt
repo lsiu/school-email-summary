@@ -7,6 +7,9 @@ python-dotenv>=1.2.2
 # HTML email handling
 html2text>=2024.2.26
 
+# Testing
+pytest>=8.0.0
+
 # Transitive dependencies (for reference)
 # cryptography>=38.0.3
 # requests>=2.20.0

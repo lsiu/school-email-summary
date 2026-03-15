@@ -38,16 +38,14 @@ def summarize_with_qwen(
     children_info = get_children_info(today)
     leona_grade = children_info["leona"]["grade"]
     leona_division = children_info["leona"]["division"]
+    leona_school_year = children_info["leona"]["school_year"]
     leonidas_grade = children_info["leonidas"]["grade"]
     leonidas_division = children_info["leonidas"]["division"]
-    
+    leonidas_school_year = children_info["leonidas"]["school_year"]
+
     # Get division grade ranges (e.g., "Grades 4-6" or "Grades 1-3")
     leona_division_range = get_division_range(leona_division)
     leonidas_division_range = get_division_range(leonidas_division)
-    
-    # Get birth years
-    leona_birth_year = children_info["leona"]["birth_year"]
-    leonidas_birth_year = children_info["leonidas"]["birth_year"]
 
     # Format the prompt with all dynamic values
     prompt_template = SUMMARIZE_PROMPT.format(
@@ -56,11 +54,11 @@ def summarize_with_qwen(
         leona_grade=leona_grade,
         leona_division=leona_division,
         leona_division_range=leona_division_range,
-        leona_birth_year=leona_birth_year,
+        leona_school_year=leona_school_year,
         leonidas_grade=leonidas_grade,
         leonidas_division=leonidas_division,
         leonidas_division_range=leonidas_division_range,
-        leonidas_birth_year=leonidas_birth_year,
+        leonidas_school_year=leonidas_school_year,
     )
 
     # Prepare email content

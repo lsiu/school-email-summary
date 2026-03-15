@@ -2,6 +2,8 @@
 Configuration settings and constants for the Gmail automation script.
 """
 
+from datetime import datetime
+
 # Gmail API scopes
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 
@@ -13,17 +15,20 @@ CACHE_DIR = ".cache"
 CACHE_EXPIRY_HOURS = 12
 
 # Children information for email classification
-# Grade and division are calculated dynamically based on birth year
+# Grade is calculated automatically based on reference school year and grade
+# Enter reference_school_year and reference_grade ONCE - no yearly updates needed
 CHILDREN = {
     "leona": {
         "name": "Leona Siu",
         "class": "Indus",
-        "birth_year": 2015,
+        "reference_school_year": 2025,  # School year starts in August (2025 = Aug 2025 - Jun 2026)
+        "reference_grade": 5,            # Grade during 2025-2026 school year
     },
     "leonidas": {
         "name": "Leonidas Siu",
         "class": "Bauhinia",
-        "birth_year": 2019,
+        "reference_school_year": 2025,  # School year starts in August (2025 = Aug 2025 - Jun 2026)
+        "reference_grade": 1,            # Grade during 2025-2026 school year
     },
 }
 
@@ -35,41 +40,55 @@ GRADE_DIVISIONS = {
 }
 
 
-def calculate_grade(birth_year: int, current_date=None) -> int:
+def get_school_year(current_date=None) -> int:
     """
-    Calculate the grade level based on birth year and current date.
-    
-    Assumes school year starts in August/September.
-    Age 6-7 = Grade 1, Age 7-8 = Grade 2, etc.
+    Get the school year for a given date.
+    School year runs August to June.
     
     Args:
-        birth_year: Year the child was born
         current_date: Optional datetime, defaults to today
         
     Returns:
-        Grade level (1-6 for elementary)
+        int: The start year of the school year (e.g., 2025 for "2025-2026")
     """
-    from datetime import datetime
-    
     if current_date is None:
         current_date = datetime.now()
     
-    current_year = current_date.year
-    current_month = current_date.month
+    year = current_date.year
+    month = current_date.month
     
-    # School year typically starts in August/September
-    # If before August, use previous school year
-    school_year_start = current_year - 1 if current_month < 8 else current_year
-    
-    # Typical age for each grade: Grade 1 = 6-7 years old
-    # Calculate age as of school year start
-    age_at_school_start = school_year_start - birth_year
-    
-    # Grade 1 starts at age 6
-    grade = age_at_school_start - 5
+    if month >= 8:      # Aug-Dec: school year is year to year+1
+        return year
+    elif month <= 6:    # Jan-Jun: school year is year-1 to year
+        return year - 1
+    else:               # July: summer break, use previous school year
+        return year - 1
 
-    # Clamp to reasonable range (grades 1-8)
-    return max(1, min(grade, 8))
+
+def calculate_grade(reference_school_year: int, reference_grade: int, current_date=None) -> int:
+    """
+    Calculate the grade level based on reference school year and grade.
+    Grade increases by 1 for each school year that passes.
+    
+    Args:
+        reference_school_year: The school year start (e.g., 2025 for 2025-2026)
+        reference_grade: The grade during the reference school year
+        current_date: Optional datetime, defaults to today
+        
+    Returns:
+        Grade level (1-12)
+    """
+    if current_date is None:
+        current_date = datetime.now()
+    
+    current_school_year = get_school_year(current_date)
+    
+    # Grade changes by +1 for each school year
+    years_passed = current_school_year - reference_school_year
+    grade = reference_grade + years_passed
+    
+    # Clamp to reasonable K-12 range
+    return max(1, min(grade, 12))
 
 
 def get_division(grade: int) -> str:
@@ -77,7 +96,7 @@ def get_division(grade: int) -> str:
     Get the elementary division for a given grade.
 
     Args:
-        grade: Grade level (1-8+)
+        grade: Grade level (1-12)
 
     Returns:
         Division name: "Lower Elementary", "Upper Elementary", or "Middle School"
@@ -115,38 +134,45 @@ def get_division_range(division: str) -> str:
 def get_children_info(current_date=None):
     """
     Get children information with dynamically calculated grade and division.
-    
+
     Args:
         current_date: Optional datetime for calculation
-        
+
     Returns:
         Dictionary with children info including calculated grade/division
     """
     result = {}
     for key, child in CHILDREN.items():
-        grade = calculate_grade(child["birth_year"], current_date)
+        grade = calculate_grade(
+            child["reference_school_year"],
+            child["reference_grade"],
+            current_date
+        )
         division = get_division(grade)
+        current_school_year = get_school_year(current_date)
+        
         result[key] = {
-            **child,
+            "name": child["name"],
+            "class": child["class"],
             "grade": grade,
             "division": division,
+            "school_year": f"{current_school_year}-{current_school_year+1}",
         }
     return result
 
 # Prompt for Qwen CLI to summarize and extract action items
-# Note: All placeholders are calculated dynamically based on birth years and today's date
+# Note: All placeholders are calculated dynamically based on reference school year and grade
 SUMMARIZE_PROMPT = """
 You are helping a parent track school-related action items from IMS (International Montessori School) emails.
 
 There are TWO children:
-- **Leona Siu** - Class: **Indus** - Grade: **{leona_grade}** - {leona_division} ({leona_division_range}) - Born: **{leona_birth_year}**
-- **Leonidas Siu** - Class: **Bauhinia** - Grade: **{leonidas_grade}** - {leonidas_division} ({leonidas_division_range}) - Born: **{leonidas_birth_year}**
+- **Leona Siu** - Class: **Indus** - Grade: **{leona_grade}** ({leona_school_year}) - {leona_division} ({leona_division_range})
+- **Leonidas Siu** - Class: **Bauhinia** - Grade: **{leonidas_grade}** ({leonidas_school_year}) - {leonidas_division} ({leonidas_division_range})
 
 Use the following to help classify which emails are for which child:
 - Class names: Indus = Leona, Bauhinia = Leonidas
 - Grade levels: Grade {leona_grade} = Leona, Grade {leonidas_grade} = Leonidas
 - School divisions: {leona_division} ({leona_division_range}) = Leona, {leonidas_division} ({leonidas_division_range}) = Leonidas
-- Age-based events: Use birth years ({leona_birth_year}/{leonidas_birth_year}) to determine which child an age-specific event applies to
 
 TODAY'S DATE: {today_date}
 
@@ -212,7 +238,6 @@ Any information that applies to both children
   - Lower Elementary (Grades 1-3)
   - Upper Elementary (Grades 4-6)
   - Middle School (Grades 7-8)
-- Use birth years ({leona_birth_year} = Leona, {leonidas_birth_year} = Leonidas) to determine age-appropriate events
 
 ---
 EMAILS:
