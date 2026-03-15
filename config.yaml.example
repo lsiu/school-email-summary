@@ -1,0 +1,71 @@
+# IMS Gmail Automation - Family Configuration
+# ============================================
+# Edit this file with your family's information.
+# After editing, save this file as 'config.yaml' in the same directory.
+
+# =============================================================================
+# YOUR CHILDREN'S INFORMATION
+# =============================================================================
+# Grade is calculated automatically based on the reference point you provide.
+# You only need to enter this ONCE - no yearly updates needed!
+#
+# How to set reference_school_year and reference_grade:
+# 1. Pick any school year where you know your child's grade
+# 2. School year starts in August (e.g., "2025" means Aug 2025 - Jun 2026)
+# 3. Enter the grade your child was/will be in that school year
+#
+# Example: If your child is in Grade 3 during the 2025-2026 school year:
+#   reference_school_year: 2025
+#   reference_grade: 3
+
+children:
+  - name: "Your Child's Name"
+    class: "Child's Class (e.g., Indus, Bauhinia, Oak, Willow)"
+    reference_school_year: 2025  # School year starts in August
+    reference_grade: 5
+
+  # Add more children as needed
+  # - name: "Second Child's Name"
+  #   class: "Child's Class"
+  #   reference_school_year: 2025
+  #   reference_grade: 3
+
+# =============================================================================
+# EMAIL SETTINGS
+# =============================================================================
+# Customize which emails to process
+
+email:
+  # Email domains to filter (emails from these senders will be processed)
+  sender_domains:
+    - "@ims.edu.hk"
+    - "@veracross.com"
+  
+  # How long to cache email results (to avoid excessive API calls)
+  cache_expiry_hours: 12
+
+# =============================================================================
+# SCHOOL SETTINGS (IMS Specific)
+# =============================================================================
+# Adjust if your school uses different division names or grade ranges
+
+school:
+  name: "International Montessori School"
+  
+  # Grade divisions for classification
+  divisions:
+    Lower Elementary: [1, 3]   # Grades 1-3
+    Upper Elementary: [4, 6]   # Grades 4-6
+    Middle School: [7, 8]      # Grades 7-8
+
+# =============================================================================
+# AI SUMMARY SETTINGS (Optional)
+# =============================================================================
+# Customize the AI prompt for summarizing emails
+
+ai:
+  # Enable/disable AI summarization (set to false to skip Qwen CLI)
+  enabled: true
+  
+  # Days to look ahead for action items
+  action_item_days: 7

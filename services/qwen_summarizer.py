@@ -11,7 +11,7 @@ import subprocess
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 
-from config.settings import SUMMARIZE_PROMPT, CACHE_DIR, get_children_info, get_division_range
+from config import CACHE_DIR, get_summarize_prompt
 from utils.cache import ensure_cache_dir
 
 
@@ -34,31 +34,13 @@ def summarize_with_qwen(
     today_date = today.strftime("%Y-%m-%d")
     seven_days_from_now = (today + timedelta(days=7)).strftime("%Y-%m-%d")
 
-    # Calculate children's current grade levels and divisions
-    children_info = get_children_info(today)
-    leona_grade = children_info["leona"]["grade"]
-    leona_division = children_info["leona"]["division"]
-    leona_school_year = children_info["leona"]["school_year"]
-    leonidas_grade = children_info["leonidas"]["grade"]
-    leonidas_division = children_info["leonidas"]["division"]
-    leonidas_school_year = children_info["leonidas"]["school_year"]
+    # Get the prompt template (dynamically generated from config)
+    prompt_template = get_summarize_prompt()
 
-    # Get division grade ranges (e.g., "Grades 4-6" or "Grades 1-3")
-    leona_division_range = get_division_range(leona_division)
-    leonidas_division_range = get_division_range(leonidas_division)
-
-    # Format the prompt with all dynamic values
-    prompt_template = SUMMARIZE_PROMPT.format(
+    # Format the prompt with dates
+    prompt = prompt_template.format(
         today_date=today_date,
         seven_days_from_now=seven_days_from_now,
-        leona_grade=leona_grade,
-        leona_division=leona_division,
-        leona_division_range=leona_division_range,
-        leona_school_year=leona_school_year,
-        leonidas_grade=leonidas_grade,
-        leonidas_division=leonidas_division,
-        leonidas_division_range=leonidas_division_range,
-        leonidas_school_year=leonidas_school_year,
     )
 
     # Prepare email content
@@ -70,7 +52,7 @@ def summarize_with_qwen(
         email_content += f"Date: {msg['date']}\n"
         email_content += f"Body:\n{msg['body']}\n"
 
-    prompt = prompt_template + email_content
+    prompt = prompt + email_content
 
     # Save prompt to cache first (before calling Qwen)
     if not cache_key:

@@ -11,10 +11,17 @@ Use --force-refresh to bypass cache.
 """
 
 import argparse
+import sys
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
-from config.settings import CACHE_EXPIRY_HOURS
+from config import (
+    load_config,
+    get_config,
+    get_children_info,
+    get_sender_domains,
+    get_cache_expiry_hours,
+)
 from services.gmail_auth import get_gmail_service
 from services.gmail_client import read_messages
 from services.qwen_summarizer import summarize_with_qwen
@@ -47,7 +54,37 @@ def parse_arguments():
         default=50,
         help="Max results per domain (default: 50)"
     )
+    parser.add_argument(
+        "--show-config",
+        action="store_true",
+        help="Show loaded configuration and exit"
+    )
     return parser.parse_args()
+
+
+def show_config():
+    """Display loaded configuration."""
+    config = get_config()
+    children_info = get_children_info()
+
+    print("=" * 60)
+    print("LOADED CONFIGURATION")
+    print("=" * 60)
+
+    print(f"\nSchool: {config.get('school', {}).get('name', 'Unknown')}")
+
+    print(f"\nChildren ({len(children_info)}):")
+    for key, child in children_info.items():
+        print(f"  - {child['name']}")
+        print(f"      Class: {child['class']}")
+        print(f"      Current Grade: {child['grade']} ({child['school_year']})")
+        print(f"      Division: {child['division']}")
+
+    print(f"\nEmail Settings:")
+    print(f"  Sender domains: {', '.join(get_sender_domains())}")
+    print(f"  Cache expiry: {get_cache_expiry_hours()} hours")
+
+    print("\n" + "=" * 60)
 
 
 def main():
@@ -55,6 +92,15 @@ def main():
     args = parse_arguments()
 
     try:
+        # Load configuration from config.yaml
+        print("Loading configuration...")
+        load_config()
+        
+        # Show configuration if requested
+        if args.show_config:
+            show_config()
+            return
+        
         print("Connecting to Gmail...")
         service = get_gmail_service()
 
@@ -64,7 +110,7 @@ def main():
         # Try to load from cache
         messages = None
         if not args.force_refresh:
-            print(f"\nChecking cache (expires after {CACHE_EXPIRY_HOURS} hours)...")
+            print(f"\nChecking cache (expires after {get_cache_expiry_hours()} hours)...")
             messages = load_from_cache(cache_key)
 
         # Fetch from API if cache miss or force refresh
@@ -77,7 +123,7 @@ def main():
             save_to_cache(cache_key, messages)
 
         if not messages:
-            print("\nNo messages found from @ims.edu.hk or @veracross.com")
+            print("\nNo messages found from " + ", ".join(get_sender_domains()))
             return
 
         print(f"\nProcessing {len(messages)} message(s)")
@@ -93,13 +139,20 @@ def main():
         print("\n" + "="*60)
         print(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         if not args.force_refresh:
-            print(f"Cache valid until: {(datetime.now() + timedelta(hours=CACHE_EXPIRY_HOURS)).strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"Cache valid until: {(datetime.now() + timedelta(hours=get_cache_expiry_hours())).strftime('%Y-%m-%d %H:%M:%S')}")
         print("="*60)
 
     except FileNotFoundError as e:
         print(f"Error: {e}")
+        print("\nHint: Copy 'config.yaml.example' to 'config.yaml' and edit with your family's information.")
+        sys.exit(1)
+    except ImportError as e:
+        print(f"Error: {e}")
+        print("\nHint: Install required packages with: pip install -r requirements.txt")
+        sys.exit(1)
     except Exception as e:
         print(f"Error: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

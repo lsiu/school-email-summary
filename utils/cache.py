@@ -10,7 +10,7 @@ import json
 import hashlib
 from datetime import datetime, timedelta
 
-from config.settings import CACHE_DIR, CACHE_EXPIRY_HOURS, SENDER_DOMAINS
+from config import CACHE_DIR, get_cache_expiry_hours, get_sender_domains
 
 
 def ensure_cache_dir():
@@ -22,25 +22,25 @@ def ensure_cache_dir():
 def get_cache_key(days: int, max_results: int) -> str:
     """
     Generate a cache key based on search parameters.
-    
+
     Args:
         days: Number of days to search back
         max_results: Maximum results per domain
-        
+
     Returns:
         MD5 hash of the search parameters
     """
-    params = f"{SENDER_DOMAINS}-{days}-{max_results}"
+    params = f"{get_sender_domains()}-{days}-{max_results}"
     return hashlib.md5(params.encode()).hexdigest()
 
 
 def load_from_cache(cache_key: str):
     """
     Load messages from cache if available and not expired.
-    
+
     Args:
         cache_key: The cache key to load from
-        
+
     Returns:
         List of cached messages or None if cache miss/expired
     """
@@ -55,8 +55,8 @@ def load_from_cache(cache_key: str):
 
         # Check if cache is expired
         cached_time = datetime.fromisoformat(cache_data['timestamp'])
-        if datetime.now() - cached_time > timedelta(hours=CACHE_EXPIRY_HOURS):
-            print(f"  Cache expired (older than {CACHE_EXPIRY_HOURS} hours)")
+        if datetime.now() - cached_time > timedelta(hours=get_cache_expiry_hours()):
+            print(f"  Cache expired (older than {get_cache_expiry_hours()} hours)")
             return None
 
         print(f"  Loaded from cache ({len(cache_data['messages'])} messages)")

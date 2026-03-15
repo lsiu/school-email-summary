@@ -1,10 +1,78 @@
-.env
-.venv
-.venv-linux
-__pycache__/
-*.pyc
-.cache/
+# IMS Gmail Automation - Git Ignore File
 
-# program specific files
+# =============================================================================
+# SENSITIVE FILES (Never commit these)
+# =============================================================================
+
+# OAuth credentials and tokens
 credentials.json
 token.json
+.env
+
+# =============================================================================
+# USER CONFIGURATION (Each parent has their own)
+# =============================================================================
+
+# User's config file (keep the example, ignore the actual config)
+config.yaml
+
+# =============================================================================
+# CACHE AND TEMPORARY FILES
+# =============================================================================
+
+# Cache directory
+.cache/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# =============================================================================
+# VIRTUAL ENVIRONMENTS
+# =============================================================================
+
+# Python virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Windows venv
+Scripts/python.exe
+Scripts/pip.exe
+Lib/site-packages/
+
+# =============================================================================
+# IDE AND EDITOR FILES
+# =============================================================================
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+
+# Other
+*.swp
+*.swo
+*~
+
+# =============================================================================
+# OS FILES
+# =============================================================================
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# =============================================================================
+# LOGS AND OUTPUT
+# =============================================================================
+
+*.log
+output.txt
