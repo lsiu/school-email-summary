@@ -18,7 +18,6 @@ from typing import Optional
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
-from google.oauth2.credentials import Credentials
 
 # File paths
 CREDENTIALS_ENC_PATH = "credentials.enc"
@@ -126,91 +125,6 @@ def decrypt_credentials(password: str) -> dict:
     # Parse credentials JSON
     import json
     return json.loads(decrypted_data.decode('utf-8'))
-
-
-def get_gmail_service():
-    """
-    Get Gmail API service using encrypted credentials.
-    
-    Decrypts credentials.enc to get OAuth client config,
-    then runs the standard OAuth flow.
-
-    Returns:
-        Authorized Gmail API service object
-
-    Raises:
-        FileNotFoundError: If credentials.enc not found
-        ValueError: If password is incorrect
-    """
-    import json
-    from google.auth.transport.requests import Request
-    from google.oauth2.credentials import Credentials
-    from google_auth_oauthlib.flow import InstalledAppFlow
-    from googleapiclient.discovery import build
-    
-    # Import SCOPES
-    try:
-        from config.settings import SCOPES
-    except ImportError:
-        SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
-
-    # Get password (from storage or prompt)
-    password = get_or_prompt_password()
-
-    # Decrypt credentials to get OAuth client config
-    creds_data = decrypt_credentials(password)
-    
-    # Check for existing token
-    token_path = "token.json"
-    creds = None
-    
-    if os.path.exists(token_path):
-        try:
-            creds = Credentials.from_authorized_user_file(token_path, SCOPES)
-        except Exception as e:
-            print(f"Warning: Could not load token.json: {e}")
-            creds = None
-    
-    # Refresh or obtain new credentials
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            try:
-                creds.refresh(Request())
-            except Exception as e:
-                print(f"Warning: Could not refresh credentials: {e}")
-                creds = None
-        
-        if not creds or not creds.valid:
-            # Run OAuth flow using decrypted credentials
-            import sys
-            import tempfile
-            
-            # Write decrypted credentials to temp file for OAuth flow
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-                json.dump(creds_data, f)
-                temp_creds_path = f.name
-            
-            try:
-                flow = InstalledAppFlow.from_client_secrets_file(temp_creds_path, SCOPES)
-                creds = flow.run_local_server(port=0)
-            except Exception as e:
-                print(f"Error: Could not complete OAuth flow: {e}")
-                print("\nIn a headless environment, run the script on your local machine first")
-                print("to generate token.json, then copy it to this environment.")
-                sys.exit(1)
-            finally:
-                # Clean up temp file
-                try:
-                    os.unlink(temp_creds_path)
-                except:
-                    pass
-            
-            # Save credentials for future use
-            with open(token_path, "w") as token:
-                token.write(creds.to_json())
-    
-    # Build and return service
-    return build("gmail", "v1", credentials=creds)
 
 
 def is_encrypted_setup() -> bool:
