@@ -4,6 +4,9 @@ google-auth-oauthlib>=1.3.0
 google-api-python-client>=2.192.0
 python-dotenv>=1.2.2
 
+# HTML email handling
+html2text>=2024.2.26
+
 # Transitive dependencies (for reference)
 # cryptography>=38.0.3
 # requests>=2.20.0

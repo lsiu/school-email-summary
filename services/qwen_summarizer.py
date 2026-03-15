@@ -11,7 +11,7 @@ import subprocess
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 
-from config.settings import SUMMARIZE_PROMPT, CACHE_DIR
+from config.settings import SUMMARIZE_PROMPT, CACHE_DIR, get_children_info, get_division_range
 from utils.cache import ensure_cache_dir
 
 
@@ -21,11 +21,11 @@ def summarize_with_qwen(
 ) -> str:
     """
     Use Qwen CLI to summarize messages and extract action items.
-    
+
     Args:
         messages: List of decoded message dictionaries
         cache_key: Optional cache key for saving the prompt
-        
+
     Returns:
         Summary text from Qwen CLI or error message
     """
@@ -34,10 +34,33 @@ def summarize_with_qwen(
     today_date = today.strftime("%Y-%m-%d")
     seven_days_from_now = (today + timedelta(days=7)).strftime("%Y-%m-%d")
 
-    # Format the prompt with actual dates
+    # Calculate children's current grade levels and divisions
+    children_info = get_children_info(today)
+    leona_grade = children_info["leona"]["grade"]
+    leona_division = children_info["leona"]["division"]
+    leonidas_grade = children_info["leonidas"]["grade"]
+    leonidas_division = children_info["leonidas"]["division"]
+    
+    # Get division grade ranges (e.g., "Grades 4-6" or "Grades 1-3")
+    leona_division_range = get_division_range(leona_division)
+    leonidas_division_range = get_division_range(leonidas_division)
+    
+    # Get birth years
+    leona_birth_year = children_info["leona"]["birth_year"]
+    leonidas_birth_year = children_info["leonidas"]["birth_year"]
+
+    # Format the prompt with all dynamic values
     prompt_template = SUMMARIZE_PROMPT.format(
         today_date=today_date,
-        seven_days_from_now=seven_days_from_now
+        seven_days_from_now=seven_days_from_now,
+        leona_grade=leona_grade,
+        leona_division=leona_division,
+        leona_division_range=leona_division_range,
+        leona_birth_year=leona_birth_year,
+        leonidas_grade=leonidas_grade,
+        leonidas_division=leonidas_division,
+        leonidas_division_range=leonidas_division_range,
+        leonidas_birth_year=leonidas_birth_year,
     )
 
     # Prepare email content
