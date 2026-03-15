@@ -1,0 +1,10 @@
+.env
+.venv
+.venv-linux
+__pycache__/
+*.pyc
+.cache/
+
+# program specific files
+credentials.json
+token.json
