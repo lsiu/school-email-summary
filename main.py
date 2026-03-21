@@ -11,6 +11,7 @@ Use --force-refresh to bypass cache.
 """
 
 import argparse
+import os
 import sys
 from datetime import datetime, timedelta
 
@@ -130,6 +131,25 @@ def main():
 
         summary = summarize_with_qwen(messages, cache_key)
         print(summary)
+
+        # Save summary to file
+        summary_dir = "summary"
+        os.makedirs(summary_dir, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        summary_file = os.path.join(summary_dir, f"summary_{timestamp}.md")
+        
+        try:
+            with open(summary_file, 'w', encoding='utf-8') as f:
+                f.write(f"# IMS Email Summary\n\n")
+                f.write(f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+                f.write(f"**Emails processed:** {len(messages)}\n\n")
+                f.write(f"---\n\n")
+                f.write(summary)
+                f.write(f"\n\n---\n\n")
+                f.write(f"**Cache valid until:** {(datetime.now() + timedelta(hours=get_cache_expiry_hours())).strftime('%Y-%m-%d %H:%M:%S')}\n")
+            print(f"\n✓ Summary saved to: {summary_file}")
+        except Exception as e:
+            print(f"\nWarning: Could not save summary to file: {e}")
 
         print("\n" + "="*60)
         print(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
