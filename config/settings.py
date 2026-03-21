@@ -52,7 +52,6 @@ DEFAULT_CONFIG = {
 _config: Dict[str, Any] = None
 CHILDREN: Dict[str, Dict[str, Any]] = {}
 SENDER_DOMAINS: List[str] = []
-CACHE_DIR: str = ".cache"
 CACHE_EXPIRY_HOURS: int = 12
 GRADE_DIVISIONS: Dict[str, tuple] = {}
 
