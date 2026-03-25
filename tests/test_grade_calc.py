@@ -1,6 +1,5 @@
 """Tests for calculate_grade() function."""
 
-import pytest
 from datetime import datetime
 from config.settings import calculate_grade
 

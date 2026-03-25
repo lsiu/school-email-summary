@@ -94,7 +94,7 @@ def summarize_with_qwen(
             return f"Error from Qwen CLI (returncode={result.returncode}): {result.stderr}"
 
     except FileNotFoundError:
-        return f"Qwen CLI not found. Please install it with: npm install -g @qwen-code/qwen-code"
+        return "Qwen CLI not found. Please install it with: npm install -g @qwen-code/qwen-code"
     except subprocess.TimeoutExpired:
         return "Qwen CLI timed out. The request may be too long."
     except Exception as e:

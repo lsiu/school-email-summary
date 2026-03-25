@@ -16,11 +16,11 @@ import sys
 from datetime import datetime, timedelta
 
 from config import (
-    load_config,
-    get_config,
-    get_children_info,
-    get_sender_domains,
     get_cache_expiry_hours,
+    get_children_info,
+    get_config,
+    get_sender_domains,
+    load_config,
 )
 from services.gmail_auth import get_gmail_service
 from services.gmail_client import read_messages
@@ -37,24 +37,22 @@ def parse_arguments():
     parser.add_argument(
         "--force-refresh",
         action="store_true",
-        help="Force refresh from Gmail API, bypassing cache"
+        help="Force refresh from Gmail API, bypassing cache",
     )
     parser.add_argument(
         "--days",
         type=int,
         default=30,
-        help="Number of days to search back (default: 30)"
+        help="Number of days to search back (default: 30)",
     )
     parser.add_argument(
         "--max-results",
         type=int,
         default=50,
-        help="Max results per domain (default: 50)"
+        help="Max results per domain (default: 50)",
     )
     parser.add_argument(
-        "--show-config",
-        action="store_true",
-        help="Show loaded configuration and exit"
+        "--show-config", action="store_true", help="Show loaded configuration and exit"
     )
     return parser.parse_args()
 
@@ -77,7 +75,7 @@ def show_config():
         print(f"      Current Grade: {child['grade']} ({child['school_year']})")
         print(f"      Division: {child['division']}")
 
-    print(f"\nEmail Settings:")
+    print("\nEmail Settings:")
     print(f"  Sender domains: {', '.join(get_sender_domains())}")
     print(f"  Cache expiry: {get_cache_expiry_hours()} hours")
 
@@ -91,12 +89,12 @@ def main():
     try:
         # Load configuration from config.yaml
         load_config()
-        
+
         # Show configuration if requested
         if args.show_config:
             show_config()
             return
-        
+
         print("Connecting to Gmail...")
         service = get_gmail_service()
 
@@ -106,16 +104,20 @@ def main():
         # Try to load from cache
         messages = None
         if not args.force_refresh:
-            print(f"\nChecking cache (expires after {get_cache_expiry_hours()} hours)...")
+            print(
+                f"\nChecking cache (expires after {get_cache_expiry_hours()} hours)..."
+            )
             messages = load_from_cache(cache_key)
 
         # Fetch from API if cache miss or force refresh
         if messages is None:
             if args.force_refresh:
-                print(f"\nForce refresh - fetching from Gmail API...")
+                print("\nForce refresh - fetching from Gmail API...")
             else:
-                print(f"\nCache miss - fetching from Gmail API...")
-            messages = read_messages(service, days=args.days, max_results_per_domain=args.max_results)
+                print("\nCache miss - fetching from Gmail API...")
+            messages = read_messages(
+                service, days=args.days, max_results_per_domain=args.max_results
+            )
             save_to_cache(cache_key, messages)
 
         if not messages:
@@ -125,9 +127,9 @@ def main():
         print(f"\nProcessing {len(messages)} message(s)")
         print(format_messages_for_summary(messages))
 
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("AI SUMMARY & ACTION ITEMS")
-        print("="*60 + "\n")
+        print("=" * 60 + "\n")
 
         summary = summarize_with_qwen(messages, cache_key)
         print(summary)
@@ -137,29 +139,37 @@ def main():
         os.makedirs(summary_dir, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         summary_file = os.path.join(summary_dir, f"summary_{timestamp}.md")
-        
+
         try:
-            with open(summary_file, 'w', encoding='utf-8') as f:
-                f.write(f"# IMS Email Summary\n\n")
-                f.write(f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            with open(summary_file, "w", encoding="utf-8") as f:
+                f.write("# IMS Email Summary\n\n")
+                f.write(
+                    f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                )
                 f.write(f"**Emails processed:** {len(messages)}\n\n")
-                f.write(f"---\n\n")
+                f.write("---\n\n")
                 f.write(summary)
-                f.write(f"\n\n---\n\n")
-                f.write(f"**Cache valid until:** {(datetime.now() + timedelta(hours=get_cache_expiry_hours())).strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write("\n\n---\n\n")
+                f.write(
+                    f"**Cache valid until:** {(datetime.now() + timedelta(hours=get_cache_expiry_hours())).strftime('%Y-%m-%d %H:%M:%S')}\n"
+                )
             print(f"\n✓ Summary saved to: {summary_file}")
         except Exception as e:
             print(f"\nWarning: Could not save summary to file: {e}")
 
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         if not args.force_refresh:
-            print(f"Cache valid until: {(datetime.now() + timedelta(hours=get_cache_expiry_hours())).strftime('%Y-%m-%d %H:%M:%S')}")
-        print("="*60)
+            print(
+                f"Cache valid until: {(datetime.now() + timedelta(hours=get_cache_expiry_hours())).strftime('%Y-%m-%d %H:%M:%S')}"
+            )
+        print("=" * 60)
 
     except FileNotFoundError as e:
         print(f"Error: {e}")
-        print("\nHint: Copy 'config.yaml.example' to 'config.yaml' and edit with your family's information.")
+        print(
+            "\nHint: Copy 'config.yaml.example' to 'config.yaml' and edit with your family's information."
+        )
         sys.exit(1)
     except ImportError as e:
         print(f"Error: {e}")
