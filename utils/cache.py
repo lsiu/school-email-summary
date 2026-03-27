@@ -3,14 +3,15 @@ Cache management for Gmail API results.
 
 Provides functions to cache API responses and prompts to avoid
 excessive API calls. Cache expires after a configurable time period.
+Cache files include timestamp in filename for expiry determination.
 """
 
-import hashlib
 import json
 import os
+import re
 from datetime import datetime, timedelta
 
-from config import CACHE_DIR, get_cache_expiry_hours, get_sender_domains
+from config import CACHE_DIR, get_cache_expiry_hours
 
 
 def ensure_cache_dir():
@@ -19,77 +20,123 @@ def ensure_cache_dir():
         os.makedirs(CACHE_DIR)
 
 
-def get_cache_key(days: int, max_results: int) -> str:
+def get_cache_filename(timestamp: datetime) -> str:
     """
-    Generate a cache key based on search parameters.
+    Generate cache filename with embedded timestamp.
 
     Args:
-        days: Number of days to search back
-        max_results: Maximum results per domain
+        timestamp: The timestamp to embed in filename
 
     Returns:
-        MD5 hash of the search parameters
+        Cache filename with format: {timestamp}.json
     """
-    params = f"{get_sender_domains()}-{days}-{max_results}"
-    return hashlib.md5(params.encode()).hexdigest()
+    timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")
+    return f"{timestamp_str}.json"
 
 
-def load_from_cache(cache_key: str):
+def parse_cache_filename(filename: str) -> datetime | None:
     """
-    Load messages from cache if available and not expired.
+    Parse cache filename to extract the embedded timestamp.
 
     Args:
-        cache_key: The cache key to load from
+        filename: Cache filename to parse
+
+    Returns:
+        datetime object parsed from the filename, or None if invalid format
+    """
+    # Pattern: {YYYYMMDD_HHMMSS}.json
+    pattern = r"^(\d{8}_\d{6})\.json$"
+    match = re.match(pattern, filename)
+    if not match:
+        return None
+
+    timestamp_str = match.group(1)
+    try:
+        timestamp = datetime.strptime(timestamp_str, "%Y%m%d_%H%M%S")
+        return timestamp
+    except ValueError:
+        return None
+
+
+def find_valid_cache() -> str | None:
+    """
+
+    Find a valid (non-expired) cache file.
+    Lists cache directory, sorts by filename descending (most recent first),
+    and checks each file's timestamp for expiry.
+
+    Returns:
+        Path to a valid cache file, or None if no valid cache is found.
+    """
+    if not os.path.exists(CACHE_DIR):
+        return None
+
+    expiry_cutoff = datetime.now() - timedelta(hours=get_cache_expiry_hours())
+
+    try:
+        # Get all JSON files and sort by filename descending (most recent first)
+        cache_files = [f for f in os.listdir(CACHE_DIR) if f.endswith(".json")]
+        cache_files.sort(reverse=True)
+
+        for filename in cache_files:
+            timestamp = parse_cache_filename(filename)
+            if not timestamp:
+                continue
+
+            # Check if cache is expired based on filename timestamp
+            if timestamp < expiry_cutoff:
+                continue
+
+            # Found a valid cache file
+            cache_file = os.path.join(CACHE_DIR, filename)
+            return cache_file
+    except Exception as e:
+        print(f"  Warning: Error scanning cache directory: {e}")
+
+    return None
+
+
+def load_from_cache():
+    """
+    Load messages from cache if available and not expired.
+    Cache expiry is determined from timestamp in filename.
+    Lists cache directory and sorts by filename descending to find
+    the most recent valid cache.
 
     Returns:
         List of cached messages or None if cache miss/expired
     """
-    cache_file = os.path.join(CACHE_DIR, f"{cache_key}.json")
+    cache_file = find_valid_cache()
 
-    if not os.path.exists(cache_file):
+    if cache_file is None:
         return None
 
     try:
         with open(cache_file, "r") as f:
             cache_data = json.load(f)
 
-        # Check if cache is expired
-        cached_time = datetime.fromisoformat(cache_data["timestamp"])
-        if datetime.now() - cached_time > timedelta(hours=get_cache_expiry_hours()):
-            print(f"  Cache expired (older than {get_cache_expiry_hours()} hours)")
-            return None
-
-        print(f"  Loaded from cache ({len(cache_data['messages'])} messages)")
-        return cache_data["messages"]
+        messages = cache_data.get("messages", [])
+        print(f"  Loaded from cache ({len(messages)} messages)")
+        return messages
 
     except Exception as e:
         print(f"  Warning: Could not load cache: {e}")
         return None
 
 
-def save_to_cache(cache_key: str, messages: list, prompt: str | None = None):
+def save_to_cache(messages: list):
     """
-    Save messages and optional prompt to cache.
+    Save messages to cache.
+    Cache filename includes timestamp for expiry determination.
 
     Args:
-        cache_key: The cache key to save to
         messages: List of message dictionaries to cache
-        prompt: Optional prompt text to save
     """
     ensure_cache_dir()
-    cache_file = os.path.join(CACHE_DIR, f"{cache_key}.json")
+    timestamp = datetime.now()
+    cache_file = os.path.join(CACHE_DIR, get_cache_filename(timestamp))
 
-    cache_data = {"timestamp": datetime.now().isoformat(), "messages": messages}
-
-    # Save prompt if provided
-    if prompt:
-        prompt_file = os.path.join(CACHE_DIR, f"{cache_key}.prompt.txt")
-        try:
-            with open(prompt_file, "w", encoding="utf-8") as f:
-                f.write(prompt)
-            cache_data["prompt_file"] = prompt_file
-        except Exception as e:
-            print(f"  Warning: Could not save prompt: {e}")
+    cache_data = {"messages": messages}
 
     try:
         with open(cache_file, "w") as f:

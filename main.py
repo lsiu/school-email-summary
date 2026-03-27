@@ -25,7 +25,10 @@ from config import (
 from services.gmail_auth import get_gmail_service
 from services.gmail_client import read_messages
 from services.qwen_summarizer import summarize_with_qwen
-from utils.cache import get_cache_key, load_from_cache, save_to_cache
+from utils.cache import (
+    load_from_cache,
+    save_to_cache,
+)
 from utils.message_parser import format_messages_for_summary
 
 
@@ -95,19 +98,13 @@ def main():
             show_config()
             return
 
-        print("Connecting to Gmail...")
-        service = get_gmail_service()
-
-        # Generate cache key
-        cache_key = get_cache_key(args.days, args.max_results)
-
         # Try to load from cache
         messages = None
         if not args.force_refresh:
             print(
                 f"\nChecking cache (expires after {get_cache_expiry_hours()} hours)..."
             )
-            messages = load_from_cache(cache_key)
+            messages = load_from_cache()
 
         # Fetch from API if cache miss or force refresh
         if messages is None:
@@ -115,10 +112,13 @@ def main():
                 print("\nForce refresh - fetching from Gmail API...")
             else:
                 print("\nCache miss - fetching from Gmail API...")
+
+            print("Connecting to Gmail...")
+            service = get_gmail_service()
             messages = read_messages(
                 service, days=args.days, max_results_per_domain=args.max_results
             )
-            save_to_cache(cache_key, messages)
+            save_to_cache(messages)
 
         if not messages:
             print("\nNo messages found from " + ", ".join(get_sender_domains()))
@@ -131,7 +131,7 @@ def main():
         print("AI SUMMARY & ACTION ITEMS")
         print("=" * 60 + "\n")
 
-        summary = summarize_with_qwen(messages, cache_key)
+        summary = summarize_with_qwen(messages)
         print(summary)
 
         # Save summary to file
