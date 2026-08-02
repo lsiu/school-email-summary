@@ -3,7 +3,7 @@
 Gmail Automation - Main Entry Point
 
 Read Gmail messages from specific senders (@ims.edu.hk or @veracross.com)
-using the Gmail API. Summarizes messages using Qwen CLI and highlights
+using the Gmail API. Summarizes messages using local Ollama and highlights
 action items for parents in the next 7 days.
 
 Results are cached for 12 hours to avoid excessive API calls.
@@ -24,7 +24,7 @@ from config import (
 )
 from services.gmail_auth import get_gmail_service
 from services.gmail_client import read_messages
-from services.qwen_summarizer import summarize_with_qwen
+from services.ollama_summarizer import summarize_with_ollama
 from utils.cache import (
     load_from_cache,
     save_to_cache,
@@ -131,7 +131,7 @@ def main():
         print("AI SUMMARY & ACTION ITEMS")
         print("=" * 60 + "\n")
 
-        summary = summarize_with_qwen(messages)
+        summary = summarize_with_ollama(messages)
         print(summary)
 
         # Save summary to file
