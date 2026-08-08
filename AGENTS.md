@@ -6,7 +6,7 @@
 
 ### Key Features
 - Reads emails from IMS (`@ims.edu.hk`) and Veracross (`@veracross.com`) domains
-- AI-powered summarization using Qwen CLI
+- AI-powered summarization using local Ollama (map-reduce pipeline)
 - Automatic grade calculation based on reference school year
 - Action item extraction with deadline awareness
 - Child-specific summaries based on class/grade/division classification
@@ -15,7 +15,7 @@
 ### Tech Stack
 - **Language:** Python 3.x
 - **Dependencies:** google-auth, google-api-python-client, pyyaml, html2text, pytest
-- **AI Integration:** Qwen CLI (`@qwen-code/qwen-code`)
+- **AI Integration:** Ollama (local, default model: `llama3.2:1b`)
 - **API:** Gmail API (OAuth 2.0)
 
 ## Project Structure
@@ -37,18 +37,20 @@ family-automation/
 │   ├── __init__.py           # Package exports
 │   ├── gmail_auth.py         # OAuth authentication (encrypted/standard)
 │   ├── gmail_client.py       # Gmail API message fetching
-│   └── qwen_summarizer.py    # AI summarization via Qwen CLI
+│   └── ollama_summarizer.py  # AI summarization via local Ollama
 │
 ├── utils/
 │   ├── __init__.py           # Package exports
-│   ├── cache.py              # JSON-based caching with expiry
+│   ├── cache.py              # Timestamped caching with expiry
+│   ├── email_cleanup.py      # Email body cleanup for AI
 │   └── message_parser.py     # HTML-to-text email parsing
 │
 └── tests/
     ├── test_school_year.py   # School year calculation tests
     ├── test_grade_calc.py    # Grade calculation tests
     ├── test_division.py      # Division mapping tests
-    └── test_children_info.py # Integration tests
+    ├── test_children_info.py # Integration tests
+    └── test_email_cleanup.py # Email cleanup tests
 ```
 
 ## Building and Running
@@ -59,8 +61,9 @@ family-automation/
 # Install Python dependencies
 pip install -r requirements.txt
 
-# Install Qwen CLI (optional, for AI summarization)
-npm install -g @qwen-code/qwen-code
+# Install Ollama (for local AI summarization)
+# https://ollama.com/download
+ollama pull llama3.2:1b
 ```
 
 ### Configuration
@@ -153,18 +156,30 @@ ai:
 - **Key Functions:**
   - `read_messages(service, days, max_results_per_domain)` - Fetch emails
 
-### services/qwen_summarizer.py
-- **Purpose:** AI summarization
+### services/ollama_summarizer.py
+- **Purpose:** AI summarization using local Ollama (map-reduce pipeline)
+- **Pipeline:** Extracts facts from each email individually, then merges extractions into the per-child summary format
 - **Key Functions:**
-  - `summarize_with_qwen(messages, cache_key)` - Call Qwen CLI with prompt
+  - `summarize_with_ollama(messages, model, base_url)` - Summarize messages with Ollama
+  - `_build_extract_prompt(msg, ...)` - Build per-email extraction prompt
+  - `_build_merge_prompt(extractions, ...)` - Build merge prompt from extraction blocks
+  - `_message_cache_key(msg)` - Generate stable per-message cache key
+  - `_extractions_cache_key(messages)` - Generate stable batch cache key
+- **Caching:** Per-message extractions and merge results are cached as plain text in `.cache/` to avoid repeated Ollama calls
 
 ### utils/cache.py
 - **Purpose:** Cache management
-- **Storage:** `.cache/` directory with JSON files
+- **Storage:** `.cache/` directory with timestamped files
 - **Key Functions:**
-  - `get_cache_key(days, max_results)` - Generate MD5 cache key
-  - `load_from_cache(cache_key)` - Load cached results
-  - `save_to_cache(cache_key, messages)` - Save results to cache
+  - `load_from_cache()` - Load cached messages
+  - `save_to_cache(messages)` - Save messages to cache
+  - `load_data_from_cache(cache_type, key)` - Load typed data (e.g., extractions, merge) from cache
+  - `save_data_to_cache(data, cache_type, key)` - Save typed data to cache as plain text
+
+### utils/email_cleanup.py
+- **Purpose:** Email body cleanup for AI
+- **Key Functions:**
+  - `clean_email_body(body, max_chars)` - Strip HTML artifacts and boilerplate
 
 ### utils/message_parser.py
 - **Purpose:** Email parsing
@@ -213,7 +228,7 @@ ai:
 The script produces:
 1. **Console output:** List of emails, AI summary with action items
 2. **Summary files:** Markdown files in `summary/` directory (timestamped)
-3. **Cache files:** JSON in `.cache/` directory
+3. **Cache files:** JSON message caches and plain-text extraction/merge caches in `.cache/` directory
 
 ## Troubleshooting
 
@@ -222,7 +237,8 @@ The script produces:
 | `config.yaml` not found | Copy `config.yaml.example` to `config.yaml` |
 | `credentials.json` not found | Provide `credentials.enc` or create `credentials.json` |
 | `ModuleNotFoundError: yaml` | `pip install pyyaml` |
-| Qwen CLI not found | `npm install -g @qwen-code/qwen-code` or set `ai.enabled: false` |
+| Ollama not running | Start Ollama with `ollama serve` or install from https://ollama.com/download |
+| Ollama model not found | `ollama pull llama3.2:1b` |
 | Grade calculation wrong | Verify `reference_school_year` and `reference_grade` |
 
 ## Notes
@@ -231,3 +247,4 @@ The script produces:
 - **Grade Calculation:** Automatic based on reference point; increments each August
 - **Divisions:** Lower Elementary (1-3), Upper Elementary (4-6), Middle School (7-8)
 - **Cache:** Expires after configurable hours (default: 12)
+- **AI Summarization:** Local Ollama with map-reduce pipeline; extractions and merge results are cached as plain text

@@ -290,25 +290,24 @@ python main.py
 
 ---
 
-## Step 7: (Optional) Set Up Qwen CLI for AI Summaries
+## Step 7: (Optional) Install Ollama for AI Summaries
 
-The tool can use AI to summarize emails. This is optional.
+The tool can use local Ollama AI to summarize emails. This is optional.
 
-### Install Node.js
+### Install Ollama
 
-1. Download from [nodejs.org](https://nodejs.org/)
-2. Install the LTS version
+1. Download and install from [ollama.com/download](https://ollama.com/download)
 
-### Install Qwen CLI
+### Pull the Default Model
 
 ```bash
-npm install -g @qwen-code/qwen-code
+ollama pull llama3.2:1b
 ```
 
-### Test Qwen CLI
+### Start Ollama (If Not Running)
 
 ```bash
-qwen --version
+ollama serve
 ```
 
 ### Disable AI (If Not Using)
@@ -369,11 +368,12 @@ Then edit `config.yaml` with your information.
 pip install pyyaml
 ```
 
-### "Qwen CLI not found"
+### "Ollama not running"
 
 **Solution:** Either:
-1. Install Qwen CLI: `npm install -g @qwen-code/qwen-code`
-2. Or disable AI in `config.yaml`: `ai.enabled: false`
+1. Install Ollama from [ollama.com/download](https://ollama.com/download) and run `ollama serve`
+2. Pull the model: `ollama pull llama3.2:1b`
+3. Or disable AI in `config.yaml`: `ai.enabled: false`
 
 ### Browser Doesn't Open for Authorization
 

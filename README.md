@@ -6,7 +6,7 @@ Automatically summarize school emails from International Montessori School (IMS)
 
 This tool:
 - Reads emails from IMS (`@ims.edu.hk`) and Veracross (`@veracross.com`)
-- Uses AI to summarize emails and extract action items
+- Uses local Ollama AI to summarize emails and extract action items
 - Separates action items by child based on their class, grade, and school division
 - Highlights upcoming events and deadlines
 - Caches results to avoid excessive API calls
@@ -19,7 +19,15 @@ This tool:
 pip install -r requirements.txt
 ```
 
-### 2. Set Up Configuration
+### 2. Install Ollama (for AI Summarization)
+
+Download and install Ollama from [ollama.com/download](https://ollama.com/download), then pull the default model:
+
+```bash
+ollama pull llama3.2:1b
+```
+
+### 3. Set Up Configuration
 
 ```bash
 # Copy the example config
@@ -29,7 +37,7 @@ cp config.yaml.example config.yaml
 # (See Configuration section below)
 ```
 
-### 3. Set Up Gmail API
+### 4. Set Up Gmail API
 
 **Option A: Using Encrypted Credentials (Recommended)**
 
@@ -51,7 +59,7 @@ cp config.yaml.example config.yaml
 
 [Detailed setup guide →](setup-guide.md)
 
-### 4. Run the Script
+### 5. Run the Script
 
 ```bash
 python main.py
@@ -170,17 +178,17 @@ Download `credentials.json` from Google Cloud Console and place it in the projec
 
 [See setup guide →](setup-guide.md)
 
-### "Qwen CLI not found"
+### "Ollama not running"
 
-The AI summarization requires Qwen CLI. Install it:
+The AI summarization requires Ollama to be running locally. Install and start it:
 
 ```bash
-# Using npm
-npm install -g @qwen-code/qwen-code
+# Install from https://ollama.com/download
+# Then start the service
+ollama serve
 
-# Or skip AI summarization by setting in config.yaml:
-ai:
-  enabled: false
+# Pull the default model
+ollama pull llama3.2:1b
 ```
 
 ### "ModuleNotFoundError: No module named 'yaml'"

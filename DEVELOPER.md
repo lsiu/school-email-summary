@@ -18,7 +18,7 @@ Technical documentation for the IMS Gmail Automation project.
 │               │    │                 │   │               │
 │  - YAML load  │    │  - Gmail Auth   │   │  - Cache      │
 │  - Validation │    │  - Gmail Client │   │  - Parser     │
-│  - Calc grade │    │  - Qwen Summ.   │   │               │
+│  - Calc grade │    │  - Ollama Summ. │   │  - Cleanup    │
 └───────────────┘    └─────────────────┘   └───────────────┘
 ```
 
@@ -43,11 +43,12 @@ ims-gmail-automation/
 │   ├── __init__.py             # Package exports
 │   ├── gmail_auth.py           # OAuth authentication
 │   ├── gmail_client.py         # Gmail API operations
-│   └── qwen_summarizer.py      # AI summarization
+│   └── ollama_summarizer.py    # AI summarization via local Ollama
 │
 ├── utils/
 │   ├── __init__.py             # Package exports
 │   ├── cache.py                # Cache management
+│   ├── email_cleanup.py        # Email body cleanup for AI
 │   └── message_parser.py       # Email decoding (HTML→text)
 │
 └── tests/
@@ -55,7 +56,8 @@ ims-gmail-automation/
     ├── test_school_year.py     # School year calculation tests
     ├── test_grade_calc.py      # Grade calculation tests
     ├── test_division.py        # Division mapping tests
-    └── test_children_info.py   # Integration tests
+    ├── test_children_info.py   # Integration tests
+    └── test_email_cleanup.py   # Email cleanup tests
 ```
 
 ## Data Flow
@@ -71,9 +73,10 @@ ims-gmail-automation/
    - Fetch emails from configured domains
    - Cache results
 
-3. **AI Summarization** (`main.py` → `services/qwen_summarizer.py`)
-   - Generate prompt from configuration
-   - Call Qwen CLI with prompt
+3. **AI Summarization** (`main.py` → `services/ollama_summarizer.py`)
+   - Map-reduce pipeline: extract facts from each email, then merge into per-child summary
+   - Call local Ollama API
+   - Cache per-message extractions and merge results as plain text
    - Return summary
 
 4. **Output** (`main.py`)
@@ -139,27 +142,53 @@ ai:
 - `days` - Number of days to search back
 - `max_results_per_domain` - Max emails per domain
 
-### services/qwen_summarizer.py
+### services/ollama_summarizer.py
 
-**Purpose:** AI summarization using Qwen CLI
+**Purpose:** AI summarization using local Ollama (map-reduce pipeline)
 
 **Key Functions:**
-- `summarize_with_qwen()` - Call Qwen CLI with generated prompt
+- `summarize_with_ollama()` - Summarize messages with Ollama
+- `_build_extract_prompt()` - Build per-email extraction prompt
+- `_build_merge_prompt()` - Build merge prompt from extraction blocks
+- `_message_cache_key()` - Generate stable per-message cache key
+- `_extractions_cache_key()` - Generate stable batch cache key
 
-**OS Detection:**
-- Windows: `qwen.cmd`
-- Linux/Mac: `qwen`
+**Pipeline:**
+1. Extract facts from each email individually (cached per-message)
+2. Merge extractions into the per-child summary format (cached per-batch)
+
+**Caching:**
+- Per-message extractions and merge results are cached as plain text in `.cache/`
+- Cache keys are SHA-256 hashes of message IDs (or content)
+- Cache expiry is configurable (default: 12 hours)
+
+**Configuration:**
+- Model: `llama3.2:1b` (default)
+- Base URL: `http://localhost:11434`
+- Timeouts: 120s extract, 360s merge
 
 ### utils/cache.py
 
 **Purpose:** Cache management for API results
 
 **Key Functions:**
-- `get_cache_key()` - Generate cache key from parameters
-- `load_from_cache()` - Load cached results
-- `save_to_cache()` - Save results to cache
+- `load_from_cache()` - Load cached messages
+- `save_to_cache()` - Save messages to cache
+- `load_data_from_cache()` - Load typed data (extractions, merge) from cache
+- `save_data_to_cache()` - Save typed data to cache as plain text
 
 **Cache Expiry:** Configurable (default: 12 hours)
+
+**Storage:**
+- Message caches: JSON files with timestamp in filename
+- Extraction/merge caches: Plain text files with timestamp, type, and key in filename
+
+### utils/email_cleanup.py
+
+**Purpose:** Email body cleanup for AI
+
+**Key Functions:**
+- `clean_email_body()` - Strip HTML artifacts and boilerplate
 
 ### utils/message_parser.py
 
@@ -274,8 +303,9 @@ python main.py --force-refresh
 # View cached messages
 cat .cache/*.json | python -m json.tool
 
-# View cached prompts
-cat .cache/*.prompt.txt
+# View cached extractions/merge results
+cat .cache/*_extraction_*.txt
+cat .cache/*_merge_*.txt
 ```
 
 ### Common Issues
@@ -287,6 +317,15 @@ ls -la config.yaml
 
 # Validate YAML syntax
 python -c "import yaml; yaml.safe_load(open('config.yaml'))"
+```
+
+**Issue:** Ollama not running
+```bash
+# Start Ollama
+ollama serve
+
+# Pull the default model
+ollama pull llama3.2:1b
 ```
 
 **Issue:** Grade calculation wrong
