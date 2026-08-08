@@ -157,10 +157,10 @@ def get_data_cache_filename(timestamp: datetime, cache_type: str, key: str) -> s
         key: Cache key identifying the data (e.g., message hash)
 
     Returns:
-        Cache filename with format: {timestamp}_{cache_type}_{key}.json
+        Cache filename with format: {timestamp}_{cache_type}_{key}.txt
     """
     timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")
-    return f"{timestamp_str}_{cache_type}_{key}.json"
+    return f"{timestamp_str}_{cache_type}_{key}.txt"
 
 
 def parse_data_cache_filename(filename: str):
@@ -173,8 +173,8 @@ def parse_data_cache_filename(filename: str):
     Returns:
         Tuple of (datetime, cache_type, key), or None if invalid format
     """
-    # Pattern: {YYYYMMDD_HHMMSS}_{type}_{key}.json
-    pattern = r"^(\d{8}_\d{6})_([a-z]+)_([a-z0-9]+)\.json$"
+    # Pattern: {YYYYMMDD_HHMMSS}_{type}_{key}.txt
+    pattern = r"^(\d{8}_\d{6})_([a-z]+)_([a-z0-9]+)\.txt$"
     match = re.match(pattern, filename)
     if not match:
         return None
@@ -204,7 +204,7 @@ def find_valid_data_cache(cache_type: str, key: str) -> str | None:
     expiry_cutoff = datetime.now() - timedelta(hours=get_cache_expiry_hours())
 
     try:
-        cache_files = [f for f in os.listdir(CACHE_DIR) if f.endswith(".json")]
+        cache_files = [f for f in os.listdir(CACHE_DIR) if f.endswith(".txt")]
         cache_files.sort(reverse=True)
 
         for filename in cache_files:
@@ -244,9 +244,8 @@ def load_data_from_cache(cache_type: str, key: str):
 
     try:
         with open(cache_file, "r", encoding="utf-8") as f:
-            cache_data = json.load(f)
+            data = f.read()
 
-        data = cache_data.get("data")
         print(f"  Loaded {cache_type} from cache ({cache_file})")
         return data
 
@@ -270,11 +269,9 @@ def save_data_to_cache(data, cache_type: str, key: str) -> None:
         CACHE_DIR, get_data_cache_filename(timestamp, cache_type, key)
     )
 
-    cache_data = {"data": data}
-
     try:
         with open(cache_file, "w", encoding="utf-8") as f:
-            json.dump(cache_data, f, indent=2)
+            f.write(data)
         print(f"  Cached {cache_type} to {cache_file}")
     except Exception as e:
         print(f"  Warning: Could not save {cache_type} cache: {e}")
