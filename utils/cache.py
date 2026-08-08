@@ -6,6 +6,7 @@ excessive API calls. Cache expires after a configurable time period.
 Cache files include timestamp in filename for expiry determination.
 """
 
+import hashlib
 import json
 import os
 import re
@@ -144,3 +145,136 @@ def save_to_cache(messages: list):
         print(f"  Cached to {cache_file}")
     except Exception as e:
         print(f"  Warning: Could not save cache: {e}")
+
+
+def get_data_cache_filename(timestamp: datetime, cache_type: str, key: str) -> str:
+    """
+    Generate cache filename for typed data with embedded timestamp and key.
+
+    Args:
+        timestamp: The timestamp to embed in filename
+        cache_type: Type of cached data (e.g., 'extractions', 'merge')
+        key: Cache key identifying the data (e.g., message hash)
+
+    Returns:
+        Cache filename with format: {timestamp}_{cache_type}_{key}.json
+    """
+    timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")
+    return f"{timestamp_str}_{cache_type}_{key}.json"
+
+
+def parse_data_cache_filename(filename: str):
+    """
+    Parse typed cache filename to extract timestamp, type, and key.
+
+    Args:
+        filename: Cache filename to parse
+
+    Returns:
+        Tuple of (datetime, cache_type, key), or None if invalid format
+    """
+    # Pattern: {YYYYMMDD_HHMMSS}_{type}_{key}.json
+    pattern = r"^(\d{8}_\d{6})_([a-z]+)_([a-z0-9]+)\.json$"
+    match = re.match(pattern, filename)
+    if not match:
+        return None
+
+    timestamp_str, cache_type, key = match.groups()
+    try:
+        timestamp = datetime.strptime(timestamp_str, "%Y%m%d_%H%M%S")
+        return timestamp, cache_type, key
+    except ValueError:
+        return None
+
+
+def find_valid_data_cache(cache_type: str, key: str) -> str | None:
+    """
+    Find a valid (non-expired) typed cache file matching type and key.
+
+    Args:
+        cache_type: Type of cached data
+        key: Cache key identifying the data
+
+    Returns:
+        Path to a valid cache file, or None if no valid cache is found.
+    """
+    if not os.path.exists(CACHE_DIR):
+        return None
+
+    expiry_cutoff = datetime.now() - timedelta(hours=get_cache_expiry_hours())
+
+    try:
+        cache_files = [f for f in os.listdir(CACHE_DIR) if f.endswith(".json")]
+        cache_files.sort(reverse=True)
+
+        for filename in cache_files:
+            parsed = parse_data_cache_filename(filename)
+            if not parsed:
+                continue
+
+            timestamp, file_type, file_key = parsed
+            if file_type != cache_type or file_key != key:
+                continue
+
+            if timestamp < expiry_cutoff:
+                continue
+
+            return os.path.join(CACHE_DIR, filename)
+    except Exception as e:
+        print(f"  Warning: Error scanning cache directory: {e}")
+
+    return None
+
+
+def load_data_from_cache(cache_type: str, key: str):
+    """
+    Load typed data from cache if available and not expired.
+
+    Args:
+        cache_type: Type of cached data
+        key: Cache key identifying the data
+
+    Returns:
+        Cached data or None if cache miss/expired
+    """
+    cache_file = find_valid_data_cache(cache_type, key)
+
+    if cache_file is None:
+        return None
+
+    try:
+        with open(cache_file, "r", encoding="utf-8") as f:
+            cache_data = json.load(f)
+
+        data = cache_data.get("data")
+        print(f"  Loaded {cache_type} from cache ({cache_file})")
+        return data
+
+    except Exception as e:
+        print(f"  Warning: Could not load {cache_type} cache: {e}")
+        return None
+
+
+def save_data_to_cache(data, cache_type: str, key: str) -> None:
+    """
+    Save typed data to cache with timestamp and key in filename.
+
+    Args:
+        data: Data to cache
+        cache_type: Type of cached data
+        key: Cache key identifying the data
+    """
+    ensure_cache_dir()
+    timestamp = datetime.now()
+    cache_file = os.path.join(
+        CACHE_DIR, get_data_cache_filename(timestamp, cache_type, key)
+    )
+
+    cache_data = {"data": data}
+
+    try:
+        with open(cache_file, "w", encoding="utf-8") as f:
+            json.dump(cache_data, f, indent=2)
+        print(f"  Cached {cache_type} to {cache_file}")
+    except Exception as e:
+        print(f"  Warning: Could not save {cache_type} cache: {e}")

@@ -4,8 +4,11 @@ Ollama summarization service.
 Uses a map-reduce pipeline tuned for small local models:
 1. Extract facts from each email individually
 2. Merge extractions into the per-child summary format
+
+Extractions and merge results are cached to avoid repeated Ollama calls.
 """
 
+import hashlib
 import json
 import os
 import urllib.error
@@ -14,14 +17,18 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List
 
 from config import CACHE_DIR, get_children_info
-from utils.cache import ensure_cache_dir
+from utils.cache import (
+    ensure_cache_dir,
+    load_data_from_cache,
+    save_data_to_cache,
+)
 from utils.email_cleanup import clean_email_body
 
 DEFAULT_MODEL = "llama3.2:1b"
 DEFAULT_BASE_URL = "http://localhost:11434"
 DEFAULT_TIMEOUT_SECONDS = 300
 EXTRACT_TIMEOUT_SECONDS = 120
-MERGE_TIMEOUT_SECONDS = 180
+MERGE_TIMEOUT_SECONDS = 360
 
 DEFAULT_OPTIONS = {
     "temperature": 0.1,
@@ -202,6 +209,44 @@ def _save_debug_artifact(filename: str, content: str) -> None:
         f.write(content)
 
 
+def _message_cache_key(msg: Dict[str, Any]) -> str:
+    """
+    Generate a stable cache key for a message based on its content.
+
+    Uses the message id if available, otherwise hashes the subject,
+    date, and body to produce a stable identifier.
+
+    Args:
+        msg: Decoded message dictionary
+
+    Returns:
+        Hex digest cache key
+    """
+    msg_id = msg.get("id")
+    if msg_id:
+        return hashlib.sha256(str(msg_id).encode("utf-8")).hexdigest()[:16]
+
+    content = f"{msg.get('subject', '')}|{msg.get('date', '')}|{msg.get('body', '')}"
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()[:16]
+
+
+def _extractions_cache_key(messages: List[Dict[str, Any]]) -> str:
+    """
+    Generate a cache key for the combined extractions of a message set.
+
+    Hashes the concatenation of each message's cache key to produce
+    a stable identifier for the whole batch.
+
+    Args:
+        messages: List of decoded message dictionaries
+
+    Returns:
+        Hex digest cache key
+    """
+    combined = "|".join(_message_cache_key(msg) for msg in messages)
+    return hashlib.sha256(combined.encode("utf-8")).hexdigest()[:16]
+
+
 def summarize_with_ollama(
     messages: List[Dict[str, Any]],
     *,
@@ -211,6 +256,9 @@ def summarize_with_ollama(
 ) -> str:
     """
     Summarize messages using map-reduce over a local Ollama model.
+
+    Extractions and merge results are cached to avoid repeated Ollama calls.
+    Cache expiry is determined by the configured cache_expiry_hours.
 
     Args:
         messages: List of decoded message dictionaries
@@ -247,6 +295,17 @@ def summarize_with_ollama(
             seven_days_from_now=seven_days_from_now,
         )
 
+        # Check cache for this message's extraction
+        cache_key = _message_cache_key(msg)
+        cached_extraction = load_data_from_cache("extraction", cache_key)
+
+        if cached_extraction is not None:
+            print(f"    Loaded extraction from cache for {subject[:50]}")
+            extraction_blocks.append(
+                _format_extraction_block(index, subject, cached_extraction)
+            )
+            continue
+
         try:
             extraction = _call_ollama(
                 prompt,
@@ -258,6 +317,8 @@ def summarize_with_ollama(
             extraction_blocks.append(
                 _format_extraction_block(index, subject, extraction)
             )
+            # Cache the extraction for this message
+            save_data_to_cache(extraction, "extraction", cache_key)
         except Exception as e:
             failed_extractions.append(f"Email {index} ({subject}): {e}")
 
@@ -276,42 +337,53 @@ def summarize_with_ollama(
 
     print(f"  Merging {len(extraction_blocks)} extraction(s)...")
 
-    try:
-        summary = _call_ollama(
-            merge_prompt,
-            model=model,
-            base_url=base_url,
-            timeout_seconds=MERGE_TIMEOUT_SECONDS,
-            options=MERGE_OPTIONS,
-        )
+    # Check cache for the merge result
+    merge_cache_key = _extractions_cache_key(messages)
+    cached_summary = load_data_from_cache("merge", merge_cache_key)
 
-        if not _summary_looks_valid(summary):
-            print("  Merge output looked incomplete, retrying with simplified prompt...")
-            retry_prompt = (
-                "Combine these school email facts into a short parent report.\n"
-                "Use bullet points. Include both children: "
-                + ", ".join(child["name"] for child in get_children_info().values())
-                + ".\n\n"
-                + extractions
-            )
+    if cached_summary is not None:
+        print("  Loaded merge result from cache")
+        summary = cached_summary
+    else:
+        try:
             summary = _call_ollama(
-                retry_prompt,
+                merge_prompt,
                 model=model,
                 base_url=base_url,
                 timeout_seconds=MERGE_TIMEOUT_SECONDS,
                 options=MERGE_OPTIONS,
             )
-    except urllib.error.URLError as e:
-        if isinstance(getattr(e, "reason", None), TimeoutError):
-            return "Ollama merge request timed out."
-        return (
-            f"Could not connect to Ollama at {base_url}. "
-            "Make sure Ollama is running (ollama serve)."
-        )
-    except json.JSONDecodeError as e:
-        return f"Error parsing Ollama response: {e}"
-    except Exception as e:
-        return f"Error merging extractions: {e}"
+
+            if not _summary_looks_valid(summary):
+                print("  Merge output looked incomplete, retrying with simplified prompt...")
+                retry_prompt = (
+                    "Combine these school email facts into a short parent report.\n"
+                    "Use bullet points. Include both children: "
+                    + ", ".join(child["name"] for child in get_children_info().values())
+                    + ".\n\n"
+                    + extractions
+                )
+                summary = _call_ollama(
+                    retry_prompt,
+                    model=model,
+                    base_url=base_url,
+                    timeout_seconds=MERGE_TIMEOUT_SECONDS,
+                    options=MERGE_OPTIONS,
+                )
+
+            # Cache the merge result
+            save_data_to_cache(summary, "merge", merge_cache_key)
+        except urllib.error.URLError as e:
+            if isinstance(getattr(e, "reason", None), TimeoutError):
+                return "Ollama merge request timed out."
+            return (
+                f"Could not connect to Ollama at {base_url}. "
+                "Make sure Ollama is running (ollama serve)."
+            )
+        except json.JSONDecodeError as e:
+            return f"Error parsing Ollama response: {e}"
+        except Exception as e:
+            return f"Error merging extractions: {e}"
 
     if failed_extractions:
         summary += "\n\n---\n\n**Note:** Some emails could not be extracted:\n"
