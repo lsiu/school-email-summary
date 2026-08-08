@@ -19,6 +19,6 @@ pytest>=8.0.0
 # google-auth-httplib2<1.0.0,>=0.2.0
 # google-api-core!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.0,<3.0.0,>=1.31.5
 
-# Note: Qwen CLI is a separate Node.js package, install with:
-# npm install -g @qwen-code/qwen-code
-# Or use the Cursor/Windsurf built-in AI instead
+# Note: Ollama is required for AI summarization (not installed via pip)
+# Install from https://ollama.com/download
+# Then pull the model: ollama pull llama3.2:1b

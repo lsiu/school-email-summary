@@ -64,7 +64,7 @@ school:
 # Customize the AI prompt for summarizing emails
 
 ai:
-  # Enable/disable AI summarization (set to false to skip Qwen CLI)
+  # Enable/disable AI summarization (set to false to skip local Ollama)
   enabled: true
   
   # Days to look ahead for action items

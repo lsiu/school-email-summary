@@ -52,6 +52,9 @@ venv/
 ENV/
 env/
 
+# Qwen sandbox environment
+.qwen/
+
 # Windows venv
 Scripts/python.exe
 Scripts/pip.exe
