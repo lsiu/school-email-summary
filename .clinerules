@@ -1,0 +1,5 @@
+# SYSTEM POLICY: Local Gitignore Guard Simulation
+- Before invoking `read_file`, `view_file`, `save_file`, or `apply_diff` on any path, you MUST implicitly verify if that path or its parent folder matches an entry in the local `.gitignore` file.
+- If a target file is listed in `.gitignore` (such as `.env`, `*.pem`, or secret directories), you are STRICTLY FORBIDDEN from reading it.
+- If you accidentally trigger an action on a `.gitignore` target, halt immediately, log a "Policy Error: File Access Blocked by Gitignore Guard," and request placeholder values from the user.
+- Do not attempt to use terminal commands (`cat`, `tail`, `grep`) to bypass this constraint.
