@@ -49,7 +49,7 @@ DEFAULT_CONFIG = {
 # Module-level Configuration (loaded from YAML)
 # =============================================================================
 
-_config: Dict[str, Any] = {}
+_config: Dict[str, Any] = None
 CHILDREN: Dict[str, Dict[str, Any]] = {}
 SENDER_DOMAINS: List[str] = []
 CACHE_EXPIRY_HOURS: int = 12
@@ -232,6 +232,8 @@ def get_division(grade: int) -> str:
     Returns:
         Division name: "Lower Elementary", "Upper Elementary", or "Middle School"
     """
+    if _config is None:
+        load_config()
     for division_name, (min_grade, max_grade) in GRADE_DIVISIONS.items():
         if min_grade <= grade <= max_grade:
             return division_name
